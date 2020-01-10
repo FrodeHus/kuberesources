@@ -89,19 +89,26 @@ def printResourceReport(data, verbose : bool):
 def parseResourcesForAllContainers(containers):
     cpuRequests = 0
     memRequests = 0
-    for container in containers:        
-        if container.resources is not None and container.resources.requests is not None:
-            cpuRequests += parseCpuResourceValue(container.resources.requests["cpu"])
-            if "memory" in container.resources.requests:
-                memRequests += parseMemoryResourceValue(container.resources.requests["memory"])
+
+    for container in containers:    
+        if container.resources is None or container.resources.requests is None:
+            continue
+    
+        requests = container.resources.requests
+        if "cpu" in requests:
+            cpuRequests += parseCpuResourceValue(requests["cpu"])
+        if "memory" in requests:
+            memRequests += parseMemoryResourceValue(requests["memory"])
+    
     return {"cpu": cpuRequests, "mem": memRequests}
 
 def parseMemoryResourceValue(value):
-    match = re.match(r'^([0-9]+)(E|Ei|P|Pi|T|Ti|G|Gi|M|Mi|K|Ki){0,1}$', value)
+    match = re.match(r'^([0-9]+)(E|Ei|P|Pi|T|Ti|G|g|Gi|M|Mi|m|K|k|Ki){0,1}$', value)
     if match is None:
         return int(value)
     amount = match.group(1)
-    eom = match.group(2)
+    eom = match.group(2).capitalize()
+    
     calc = {
         "Ki": math.pow(1024,1),
         "K": 1000,
