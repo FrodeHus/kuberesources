@@ -11,9 +11,10 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 class NodeData:
     totalCpuRequests = 0
     totalMemRequests = 0
+    totalCpuCapacity = 0
+    totalMemCapacity = 0
 
     def __init__(self, nodename, capacity):
-        super().__init__()
         self.cpuRequests = {}
         self.memRequests = {}
         self.name = nodename
@@ -21,6 +22,9 @@ class NodeData:
         self.memCapacity = parseMemoryResourceValue(capacity["memory"])
         self.totalCpuRequests = 0
         self.totalMemRequests = 0
+
+        NodeData.totalCpuCapacity += self.cpuCapacity
+        NodeData.totalMemCapacity += self.memCapacity
 
     def addCpuRequest(self, podName, cpuRequest):
         NodeData.totalCpuRequests += cpuRequest
@@ -50,12 +54,11 @@ def main(argv):
 
     try:
         allData = []
-        nodes = api.list_node()
-        for node in nodes.items:
+        nodes = api.list_node(label_selector='!node-role.kubernetes.io/master')
+        for node in nodes.items:            
             nodeName = node.metadata.name
             nodeData = NodeData(nodeName, node.status.capacity)
-            pod_templates = api.list_pod_for_all_namespaces(
-                field_selector='spec.nodeName=%s,status.phase!=Failed,status.phase!=Succeeded' % nodeName)
+            pod_templates = api.list_pod_for_all_namespaces(field_selector='spec.nodeName=%s,status.phase!=Failed,status.phase!=Succeeded' % nodeName)
             for template in pod_templates.items:
                 name = template.metadata.name
                 resources = parseResourcesForAllContainers(template.spec.containers)
@@ -85,6 +88,14 @@ def printResourceReport(data, verbose : bool):
                     if node.cpuRequests[pod] == 0:
                         continue
                     print("\t{:50}{:>5}".format(pod, node.cpuRequests[pod]))
+            
+        print(Fore.CYAN + "\nTotal cluster utilization" + Style.RESET_ALL)
+        barTotalCpu = Bar("Requested CPU    ", max=NodeData.totalCpuCapacity, suffix='%(percent)d%%', fill=Fore.YELLOW + "#" + Style.RESET_ALL)
+        barTotalCpu.goto(NodeData.totalCpuRequests)
+        barTotalCpu.finish()
+        barTotalMem = Bar("Requested Memory ", max=NodeData.totalMemCapacity, suffix='%(percent)d%%', fill=Fore.YELLOW + "#" + Style.RESET_ALL)
+        barTotalMem.goto(NodeData.totalMemRequests)
+        barTotalMem.finish()
 
 def parseResourcesForAllContainers(containers):
     cpuRequests = 0
