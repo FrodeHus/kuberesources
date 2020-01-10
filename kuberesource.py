@@ -90,10 +90,10 @@ def printResourceReport(data, verbose : bool):
                     print("\t{:50}{:>5}".format(pod, node.cpuRequests[pod]))
             
         print(Fore.CYAN + "\nTotal cluster utilization" + Style.RESET_ALL)
-        barTotalCpu = Bar("Requested CPU    ", max=NodeData.totalCpuCapacity, suffix='%(percent)d%%', fill=Fore.YELLOW + "#" + Style.RESET_ALL)
+        barTotalCpu = Bar("Requested CPU   ", max=NodeData.totalCpuCapacity, suffix='%(percent)d%%', fill=Fore.YELLOW + "#" + Style.RESET_ALL)
         barTotalCpu.goto(NodeData.totalCpuRequests)
         barTotalCpu.finish()
-        barTotalMem = Bar("Requested Memory ", max=NodeData.totalMemCapacity, suffix='%(percent)d%%', fill=Fore.YELLOW + "#" + Style.RESET_ALL)
+        barTotalMem = Bar("Requested Memory", max=NodeData.totalMemCapacity, suffix='%(percent)d%%', fill=Fore.YELLOW + "#" + Style.RESET_ALL)
         barTotalMem.goto(NodeData.totalMemRequests)
         barTotalMem.finish()
 
