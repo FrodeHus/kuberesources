@@ -41,7 +41,7 @@ def main(argv):
         sys.exit(2)
     for opt, arg in opts:
         if opt == "-h":
-            print("{} [-v]".format(__file__))
+            print("{} -v (optional) - Lists requests for each pod on the nodes".format(__file__))
             sys.exit(1)
         elif opt in ("-v", "--verbose"):
             verbose = True
