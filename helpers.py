@@ -7,10 +7,12 @@ def selectContext():
     if not contexts:
         print("No contexts found - please set up your kubeconfig file")
         sys.exit(2)
-
-    contextNames = [context['name'] for context in contexts]
-    active = contextNames.index(activeContext["name"])
-    cluster, index = pick(contextNames, "Select cluster", default_index=active)
+    if len(contexts) == 1:
+        cluster = activeContext["name"]
+    else:
+        contextNames = [context['name'] for context in contexts]
+        active = contextNames.index(activeContext["name"])
+        cluster, index = pick(contextNames, "Select cluster", default_index=active)
 
     return client.CoreV1Api(api_client=config.new_client_from_config(context=cluster))
 
