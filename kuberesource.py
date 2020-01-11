@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-import sys, getopt, re, urllib3, math
+import sys, getopt, urllib3
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 from progress.bar import Bar
 from colorama import Fore, Style
+import helpers
 import adal
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -19,7 +20,7 @@ class NodeData:
         self.memRequests = {}
         self.name = nodename
         self.cpuCapacity = int(capacity["cpu"]) * 1000
-        self.memCapacity = parseMemoryResourceValue(capacity["memory"])
+        self.memCapacity = helpers.parseMemoryResourceValue(capacity["memory"])
         self.totalCpuRequests = 0
         self.totalMemRequests = 0
 
@@ -49,8 +50,7 @@ def main(argv):
             sys.exit(1)
         elif opt in ("-v", "--verbose"):
             verbose = True
-    config.load_kube_config()
-    api = client.CoreV1Api()
+    api = helpers.selectContext()
 
     try:
         allData = []
@@ -107,35 +107,11 @@ def parseResourcesForAllContainers(containers):
     
         requests = container.resources.requests
         if "cpu" in requests:
-            cpuRequests += parseCpuResourceValue(requests["cpu"])
+            cpuRequests += helpers.parseCpuResourceValue(requests["cpu"])
         if "memory" in requests:
-            memRequests += parseMemoryResourceValue(requests["memory"])
+            memRequests += helpers.parseMemoryResourceValue(requests["memory"])
     
     return {"cpu": cpuRequests, "mem": memRequests}
-
-def parseMemoryResourceValue(value):
-    match = re.match(r'^([0-9]+)(E|Ei|P|Pi|T|Ti|G|g|Gi|M|Mi|m|K|k|Ki){0,1}$', value)
-    if match is None:
-        return int(value)
-    amount = match.group(1)
-    eom = match.group(2).capitalize()
-    
-    calc = {
-        "Ki": math.pow(1024,1),
-        "K": 1000,
-        "Mi": math.pow(1024,2),
-        "M": 1000000,
-        "Gi": math.pow(1024,3),
-        "G": 1000000000
-    }
-
-    return int(amount) * calc.get(eom)
-
-def parseCpuResourceValue(value):
-    match = re.match(r'^([0-9]+)m$', value)
-    if match is not None:
-        return int(match.group(1))
-    return int(value) * 1000
 
 
 if __name__ == "__main__":
