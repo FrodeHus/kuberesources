@@ -12,9 +12,9 @@ def selectContext():
     else:
         contextNames = [context['name'] for context in contexts]
         active = contextNames.index(activeContext["name"])
-        cluster, index = pick(contextNames, "Select cluster", default_index=active)
+        cluster, _ = pick(contextNames, "Select cluster", default_index=active)
 
-    return client.CoreV1Api(api_client=config.new_client_from_config(context=cluster))
+    return client.CoreV1Api(api_client=config.new_client_from_config(context=cluster)), cluster
 
 def parseMemoryResourceValue(value):
     match = re.match(r'^([0-9]+)(E|Ei|P|Pi|T|Ti|G|g|Gi|M|Mi|m|K|k|Ki){0,1}$', value)

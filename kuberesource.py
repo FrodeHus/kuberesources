@@ -4,38 +4,10 @@ from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 from progress.bar import Bar
 from colorama import Fore, Style
+from entities import NodeData
 import helpers
 import adal
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-
-class NodeData:
-    totalCpuRequests = 0
-    totalMemRequests = 0
-    totalCpuCapacity = 0
-    totalMemCapacity = 0
-
-    def __init__(self, nodename, capacity):
-        self.cpuRequests = {}
-        self.memRequests = {}
-        self.name = nodename
-        self.cpuCapacity = int(capacity["cpu"]) * 1000
-        self.memCapacity = helpers.parseMemoryResourceValue(capacity["memory"])
-        self.totalCpuRequests = 0
-        self.totalMemRequests = 0
-
-        NodeData.totalCpuCapacity += self.cpuCapacity
-        NodeData.totalMemCapacity += self.memCapacity
-
-    def addCpuRequest(self, podName, cpuRequest):
-        NodeData.totalCpuRequests += cpuRequest
-        self.totalCpuRequests += cpuRequest
-        self.cpuRequests[podName] = cpuRequest
-
-    def addMemRequest(self, podName, memRequest):
-        NodeData.totalMemRequests += memRequest
-        self.totalMemRequests += memRequest
-        self.memRequests[podName] = memRequest
 
 def main(argv):
     verbose = False
@@ -50,8 +22,8 @@ def main(argv):
             sys.exit(1)
         elif opt in ("-v", "--verbose"):
             verbose = True
-    api = helpers.selectContext()
-
+    api, contextName = helpers.selectContext()
+    print(Fore.GREEN + "Active kube context: {}".format(contextName) + Style.RESET_ALL)
     try:
         allData = []
         nodes = api.list_node(label_selector='!node-role.kubernetes.io/master')
@@ -61,9 +33,13 @@ def main(argv):
             pod_templates = api.list_pod_for_all_namespaces(field_selector='spec.nodeName=%s,status.phase!=Failed,status.phase!=Succeeded' % nodeName)
             for template in pod_templates.items:
                 name = template.metadata.name
-                resources = parseResourcesForAllContainers(template.spec.containers)
-                nodeData.addCpuRequest(name, resources["cpu"])
-                nodeData.addMemRequest(name, resources["mem"])
+                requests = parseResourceRequestsForAllContainers(template.spec.containers)
+                nodeData.addCpuRequest(name, requests["cpu"])
+                nodeData.addMemRequest(name, requests["mem"])
+
+                limits = parseResourceLimitsForAllContainers(template.spec.containers)
+                nodeData.addCpuLimit(name, limits["cpu"])
+
             allData.append(nodeData)
 
         printResourceReport(allData, verbose)
@@ -76,6 +52,9 @@ def printResourceReport(data, verbose : bool):
 
             barCpu = Bar("Requested CPU   ", max=node.cpuCapacity , suffix='%(percent)d%%', fill=Fore.YELLOW + "#" + Style.RESET_ALL)
             barCpu.goto(node.totalCpuRequests)
+            barCpu.finish()
+            barCpu = Bar("Limits CPU      ", max=node.cpuCapacity , suffix='%(percent)d%%', fill=Fore.YELLOW + "#" + Style.RESET_ALL)
+            barCpu.goto(node.totalCpuLimits)
             barCpu.finish()
             barMem = Bar("Requested memory", max=node.memCapacity , suffix='%(percent)d%%', fill=Fore.YELLOW + "#" + Style.RESET_ALL)
             barMem.goto(node.totalMemRequests)
@@ -97,7 +76,7 @@ def printResourceReport(data, verbose : bool):
         barTotalMem.goto(NodeData.totalMemRequests)
         barTotalMem.finish()
 
-def parseResourcesForAllContainers(containers):
+def parseResourceRequestsForAllContainers(containers):
     cpuRequests = 0
     memRequests = 0
 
@@ -113,6 +92,21 @@ def parseResourcesForAllContainers(containers):
     
     return {"cpu": cpuRequests, "mem": memRequests}
 
+def parseResourceLimitsForAllContainers(containers):
+    cpuLimits = 0
+    memLimits = 0
+
+    for container in containers:    
+        if container.resources is None or container.resources.limits is None:
+            continue
+    
+        limits = container.resources.limits
+        if "cpu" in limits:
+            cpuLimits += helpers.parseCpuResourceValue(limits["cpu"])
+        if "memory" in limits:
+            memLimits += helpers.parseMemoryResourceValue(limits["memory"])
+    
+    return {"cpu": cpuLimits, "mem": memLimits}
 
 if __name__ == "__main__":
     main(sys.argv[1:])
