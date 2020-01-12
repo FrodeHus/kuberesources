@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="kuberesources",
-    version="1.0b3",
+    version="1.0",
     packages=setuptools.find_packages(),
     entry_points={
         'console_scripts': [

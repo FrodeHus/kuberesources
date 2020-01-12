@@ -1,10 +1,13 @@
+## Installation
+Install using `pip3 install kuberesources`
+
 # Description
 
 Utility for retrieving the status of resource requests across nodes in a Kubernetes cluster.  
 Useful for planning capacity.
 
-`./kuberesources.py` gives an overview of the reserved capacity for each node as well as total for the cluster  
-`./kuberesources.py -v` lists pods' resource requests on each node, as well. 
+`kresources` gives an overview of the reserved capacity for each node as well as total for the cluster  
+`kresources -v` lists pods' resource requests on each node, as well. 
 
 ## Sample output
 ![sample output](images/sample.png)
