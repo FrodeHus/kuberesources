@@ -1,15 +1,15 @@
-#!/usr/bin/env python3
 import sys, getopt, urllib3
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 from progress.bar import Bar
 from colorama import Fore, Style
-from entities import NodeData
-import helpers
+from .entities import NodeData
+from .helpers import Kube, Parsers
 import adal
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-def main(argv):
+def main():
+    argv = sys.argv[1:]
     verbose = False
     try:
         opts, args = getopt.getopt(argv, "hv", ["verbose"])
@@ -22,7 +22,7 @@ def main(argv):
             sys.exit(1)
         elif opt in ("-v", "--verbose"):
             verbose = True
-    api, contextName = helpers.selectContext()
+    api, contextName = Kube.selectContext()
     print(Fore.GREEN + "Active kube context: {}".format(contextName) + Style.RESET_ALL)
     try:
         allData = []
@@ -86,9 +86,9 @@ def parseResourceRequestsForAllContainers(containers):
     
         requests = container.resources.requests
         if "cpu" in requests:
-            cpuRequests += helpers.parseCpuResourceValue(requests["cpu"])
+            cpuRequests += Parsers.parseCpuResourceValue(requests["cpu"])
         if "memory" in requests:
-            memRequests += helpers.parseMemoryResourceValue(requests["memory"])
+            memRequests += Parsers.parseMemoryResourceValue(requests["memory"])
     
     return {"cpu": cpuRequests, "mem": memRequests}
 
@@ -102,11 +102,11 @@ def parseResourceLimitsForAllContainers(containers):
     
         limits = container.resources.limits
         if "cpu" in limits:
-            cpuLimits += helpers.parseCpuResourceValue(limits["cpu"])
+            cpuLimits += Parsers.parseCpuResourceValue(limits["cpu"])
         if "memory" in limits:
-            memLimits += helpers.parseMemoryResourceValue(limits["memory"])
+            memLimits += Parsers.parseMemoryResourceValue(limits["memory"])
     
     return {"cpu": cpuLimits, "mem": memLimits}
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()

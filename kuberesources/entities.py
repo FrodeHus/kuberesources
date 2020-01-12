@@ -1,4 +1,4 @@
-import helpers
+from .helpers import Parsers
 
 class NodeData:
     totalCpuRequests = 0
@@ -13,7 +13,7 @@ class NodeData:
         self.cpuLimits = {}
         self.name = nodename
         self.cpuCapacity = int(capacity["cpu"]) * 1000
-        self.memCapacity = helpers.parseMemoryResourceValue(capacity["memory"])
+        self.memCapacity = Parsers.parseMemoryResourceValue(capacity["memory"])
         self.totalCpuRequests = 0
         self.totalMemRequests = 0
         self.totalCpuLimits = 0
