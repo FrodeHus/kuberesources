@@ -1,13 +1,12 @@
 from .helpers import Parsers, Kube
 from kubernetes.client.rest import ApiException
 from kubernetes import client
-from progress.bar import Bar
 from colorama import Fore, Style
 
 class KubeResources:
     def __init__(self, kubeClient : Kube):
         self.__kubeClient = kubeClient
-        self.__nodeData = self.__getNodeData()
+        self.__getNodeData()
     
     def __getNodeData(self):
         allData = []
@@ -27,12 +26,12 @@ class KubeResources:
 
                     limits = self.__parseResourceLimitsForAllContainers(template.spec.containers)
                     nodeData.addCpuLimit(name, limits["cpu"])
+                    nodeData.addMemLimit(name, limits["mem"])
 
                 allData.append(nodeData)
- 
+            self.__nodeData = allData
         except ApiException as e:
             print("Error when attempting to read node data: %s\n" % e)            
-        return allData
 
     def __parseResourceRequestsForAllContainers(self, containers):
         cpuRequests = 0
@@ -65,44 +64,51 @@ class KubeResources:
                 memLimits += Parsers.parseMemoryResourceValue(limits["memory"])
         
         return {"cpu": cpuLimits, "mem": memLimits}
-    
+
+    def __printProgressBar(self, current, total, prefix="", suffix="", decimals=1, length=50, fill='#', printEnd="\r"):
+        percent = ("{0:." + str(decimals) + "f}").format(100 * (current / float(total)))
+        filledLength = int(length * current / total)
+        if filledLength > length:
+            color = Fore.RED
+        elif filledLength < length/2:
+            color = Fore.GREEN
+        elif filledLength > length/2:
+            color = Fore.YELLOW
+
+        bar = color + fill * filledLength + Style.RESET_ALL + "-" * (length - filledLength)
+
+        print("\r%s |%s| %s%% %s" % (prefix, bar, percent, suffix), end=printEnd)
+        print()
+            
     def print(self, verbose : bool):
-            print(Fore.GREEN + "Active kube context: {}".format(self.__kubeClient.context) + Style.RESET_ALL)
-            for node in self.__nodeData:
-                print(Fore.CYAN + "Node {:20}".format(node.name) + Style.RESET_ALL)
-
-                barCpu = Bar("Requested CPU   ", max=node.cpuCapacity , suffix='%(percent)d%%', fill=Fore.YELLOW + "#" + Style.RESET_ALL)
-                barCpu.goto(node.totalCpuRequests)
-                barCpu.finish()
-                barCpu = Bar("Limits CPU      ", max=node.cpuCapacity , suffix='%(percent)d%%', fill=Fore.YELLOW + "#" + Style.RESET_ALL)
-                barCpu.goto(node.totalCpuLimits)
-                barCpu.finish()
-                barMem = Bar("Requested memory", max=node.memCapacity , suffix='%(percent)d%%', fill=Fore.YELLOW + "#" + Style.RESET_ALL)
-                barMem.goto(node.totalMemRequests)
-                barMem.finish()
-                
+        print(Fore.GREEN + "Active kube context: {}".format(self.__kubeClient.context) + Style.RESET_ALL)
+        for node in self.__nodeData:
+            print(Fore.CYAN + "Node {:20}".format(node.name) + Style.RESET_ALL)
+            print(Fore.GREEN + "CPU" + Style.RESET_ALL)
+            self.__printProgressBar(node.totalCpuRequests, node.cpuCapacity, "  Requested ")
+            self.__printProgressBar(node.totalCpuLimits, node.cpuCapacity, "  Limit     ")
+            print(Fore.GREEN + "Memory" + Style.RESET_ALL)
+            self.__printProgressBar(node.totalMemRequests, node.memCapacity, "  Requested ")
+            self.__printProgressBar(node.totalMemLimits, node.memCapacity, "  Limit     ")
+            print()
+            
+            if verbose:
+                print("\t{:50}{:>5}{:>8}".format("POD", "CPU", "MEM"))
+                for pod in node.cpuRequests.keys():
+                    if node.cpuRequests[pod] == 0:
+                        continue
+                    print("\t{:50}{:>5}{:>8}Mi".format(pod, node.cpuRequests[pod], int(node.memRequests[pod] / 1048576)))
                 print()
-                
-                if verbose:
-                    print("\t{:50}{:>5}{:>8}".format("POD", "CPU", "MEM"))
-                    for pod in node.cpuRequests.keys():
-                        if node.cpuRequests[pod] == 0:
-                            continue
-                        print("\t{:50}{:>5}{:>8}Mi".format(pod, node.cpuRequests[pod], int(node.memRequests[pod] / 1048576)))
-                    print()
 
-            print(Fore.CYAN + "\nTotal cluster utilization" + Style.RESET_ALL)
-            barTotalCpu = Bar("Requested CPU   ", max=NodeData.totalCpuCapacity, suffix='%(percent)d%%', fill=Fore.YELLOW + "#" + Style.RESET_ALL)
-            barTotalCpu.goto(NodeData.totalCpuRequests)
-            barTotalCpu.finish()
-            barTotalMem = Bar("Requested Memory", max=NodeData.totalMemCapacity, suffix='%(percent)d%%', fill=Fore.YELLOW + "#" + Style.RESET_ALL)
-            barTotalMem.goto(NodeData.totalMemRequests)
-            barTotalMem.finish()
+        print(Fore.CYAN + "\nTotal cluster utilization" + Style.RESET_ALL)
+        self.__printProgressBar(NodeData.totalCpuRequests, NodeData.totalCpuCapacity, "  Requested ")
+        self.__printProgressBar(NodeData.totalMemRequests, NodeData.totalMemCapacity, "  Requested ")
 
 class NodeData:
     totalCpuRequests = 0
     totalCpuLimits = 0
     totalMemRequests = 0
+    totalMemLimits = 0
     totalCpuCapacity = 0
     totalMemCapacity = 0
 
@@ -110,12 +116,14 @@ class NodeData:
         self.cpuRequests = {}
         self.memRequests = {}
         self.cpuLimits = {}
+        self.memLimits = {}
         self.name = nodename
         self.cpuCapacity = int(capacity["cpu"]) * 1000
         self.memCapacity = Parsers.parseMemoryResourceValue(capacity["memory"])
         self.totalCpuRequests = 0
         self.totalMemRequests = 0
         self.totalCpuLimits = 0
+        self.totalMemLimits = 0
 
         NodeData.totalCpuCapacity += self.cpuCapacity
         NodeData.totalMemCapacity += self.memCapacity
@@ -134,3 +142,8 @@ class NodeData:
         NodeData.totalMemRequests += memRequest
         self.totalMemRequests += memRequest
         self.memRequests[podName] = memRequest
+
+    def addMemLimit(self, podName, memLimit):
+        NodeData.totalMemLimits += memLimit
+        self.totalMemLimits += memLimit
+        self.memLimits[podName] = memLimit

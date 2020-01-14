@@ -19,7 +19,7 @@ class Kube():
 
         self.api = client.CoreV1Api(api_client=config.new_client_from_config(context=self.context))
     
-    def getAutoScalers(self):
+    def getAutoScalers(self) -> client.V2beta2HorizontalPodAutoscalerList :
         hpaClient = client.AutoscalingV2beta2Api(config.new_client_from_config(context=self.context))
         autoscalers = hpaClient.list_horizontal_pod_autoscaler_for_all_namespaces()
         return autoscalers
