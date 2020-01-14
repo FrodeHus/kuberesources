@@ -7,7 +7,7 @@ with open(path.join(dir, 'README.md'), encoding='utf-8') as f:
 
 setuptools.setup(
     name="kuberesources",
-    version="1.5",
+    version="1.5.1",
     packages=setuptools.find_packages(),
     entry_points={
         'console_scripts': [
