@@ -28,7 +28,7 @@ class Kube():
             },
             {
                 "type":"checkbox",
-                "message": "Show additional data per pod",
+                "message": "Show additional data per node",
                 "name": "extra",
                 "choices":[
                     {
