@@ -7,7 +7,7 @@ with open(path.join(dir, 'README.md'), encoding='utf-8') as f:
 
 setuptools.setup(
     name="kuberesources",
-    version="1.4",
+    version="1.4.1",
     packages=setuptools.find_packages(),
     entry_points={
         'console_scripts': [
@@ -22,7 +22,7 @@ setuptools.setup(
     url="https://github.com/frodehus/kuberesources",
     python_requires='>=3.6',
     install_requires=[
-        "kubernetes",
+        "kubernetes>=11.0.0b2",
         "pick",
         "adal",
         "colorama",
