@@ -65,7 +65,7 @@ class KubeResources:
         
         return {"cpu": cpuLimits, "mem": memLimits}
 
-    def __printProgressBar(self, current, total, prefix="", suffix="", decimals=1, length=50, fill='#', printEnd="\r"):
+    def __printProgressBar(self, current, total, prefix="", suffix="", decimals=1, length=25, fill='#', printEnd="\r"):
         percent = ("{0:." + str(decimals) + "f}").format(100 * (current / float(total)))
         filledLength = int(length * current / total)
         if filledLength > length:
@@ -80,7 +80,7 @@ class KubeResources:
         print("\r%s |%s| %s%% %s" % (prefix, bar, percent, suffix), end=printEnd)
         print()
             
-    def print(self, verbose : bool):
+    def print(self):
         print(Fore.GREEN + "Active kube context: {}".format(self.__kubeClient.context) + Style.RESET_ALL)
         for node in self.__nodeData:
             print(Fore.CYAN + "Node {:20}".format(node.name) + Style.RESET_ALL)
@@ -92,7 +92,7 @@ class KubeResources:
             self.__printProgressBar(node.totalMemLimits, node.memCapacity, "  Limit     ")
             print()
             
-            if verbose:
+            if self.__kubeClient.showPodInfo:
                 print("\t{:50}{:>5}{:>8}".format("POD", "CPU", "MEM"))
                 for pod in node.cpuRequests.keys():
                     if node.cpuRequests[pod] == 0:

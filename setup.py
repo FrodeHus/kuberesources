@@ -23,7 +23,7 @@ setuptools.setup(
     python_requires='>=3.6',
     install_requires=[
         "kubernetes>=11.0.0b2",
-        "pick",
+        "pyinquirer",
         "adal",
         "colorama",
     ],
