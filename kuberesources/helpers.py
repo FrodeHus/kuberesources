@@ -3,19 +3,27 @@ from pick import pick
 import sys, re, math
 
 class Kube():
-    def selectContext():
+    context: str
+    api: client.CoreV1Api
+    def selectContext(self):
         contexts, activeContext = config.list_kube_config_contexts()
         if not contexts:
             print("No contexts found - please set up your kubeconfig file")
             sys.exit(2)
         if len(contexts) == 1:
-            cluster = activeContext["name"]
+            self.context = activeContext["name"]
         else:
             contextNames = [context['name'] for context in contexts]
             active = contextNames.index(activeContext["name"])
-            cluster, _ = pick(contextNames, "Select cluster", default_index=active)
+            self.context, _ = pick(contextNames, "Select cluster", default_index=active)
 
-        return client.CoreV1Api(api_client=config.new_client_from_config(context=cluster)), cluster
+        self.api = client.CoreV1Api(api_client=config.new_client_from_config(context=self.context))
+    
+    def getAutoScalers(self):
+        hpaClient = client.AutoscalingV2beta2Api(config.new_client_from_config(context=self.context))
+        autoscalers = hpaClient.list_horizontal_pod_autoscaler_for_all_namespaces()
+        return autoscalers
+        
 
 class Parsers():
     def parseMemoryResourceValue(value):
