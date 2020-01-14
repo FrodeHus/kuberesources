@@ -2,6 +2,7 @@ from .helpers import Parsers, Kube
 from kubernetes.client.rest import ApiException
 from kubernetes import client
 from colorama import Fore, Style
+from prettytable import PrettyTable
 
 class KubeResources:
     def __init__(self, kubeClient : Kube):
@@ -77,32 +78,24 @@ class KubeResources:
 
         bar = color + fill * filledLength + Style.RESET_ALL + "-" * (length - filledLength)
 
-        print("\r%s |%s| %s%% %s" % (prefix, bar, percent, suffix), end=printEnd)
-        print()
+        return "{} |{}| {}% {}".format(prefix, bar, percent, suffix)
             
     def print(self):
         print(Fore.GREEN + "Active kube context: {}".format(self.__kubeClient.context) + Style.RESET_ALL)
+        table = PrettyTable(["Node", "CPU", "Memory"])
+        table.align["Node"] = "l"
         for node in self.__nodeData:
-            print(Fore.CYAN + "Node {:20}".format(node.name) + Style.RESET_ALL)
-            print(Fore.GREEN + "CPU" + Style.RESET_ALL)
-            self.__printProgressBar(node.totalCpuRequests, node.cpuCapacity, "  Requested ")
-            self.__printProgressBar(node.totalCpuLimits, node.cpuCapacity, "  Limit     ")
-            print(Fore.GREEN + "Memory" + Style.RESET_ALL)
-            self.__printProgressBar(node.totalMemRequests, node.memCapacity, "  Requested ")
-            self.__printProgressBar(node.totalMemLimits, node.memCapacity, "  Limit     ")
-            print()
+            table.add_row([Fore.CYAN + node.name + Style.RESET_ALL, self.__printProgressBar(node.totalCpuRequests, node.cpuCapacity, "Req"), self.__printProgressBar(node.totalMemRequests, node.memCapacity, "Req")])
+            table.add_row(['', self.__printProgressBar(node.totalCpuLimits, node.cpuCapacity, "Lim"), self.__printProgressBar(node.totalMemLimits, node.memCapacity, "Lim")])
             
             if self.__kubeClient.showPodInfo:
-                print("\t{:50}{:>5}{:>8}".format("POD", "CPU", "MEM"))
                 for pod in node.cpuRequests.keys():
                     if node.cpuRequests[pod] == 0:
                         continue
-                    print("\t{:50}{:>5}{:>8}Mi".format(pod, node.cpuRequests[pod], int(node.memRequests[pod] / 1048576)))
-                print()
-
-        print(Fore.CYAN + "\nTotal cluster utilization" + Style.RESET_ALL)
-        self.__printProgressBar(NodeData.totalCpuRequests, NodeData.totalCpuCapacity, "  Requested ")
-        self.__printProgressBar(NodeData.totalMemRequests, NodeData.totalMemCapacity, "  Requested ")
+                    table.add_row(["{}...".format(pod[0:14]), "{}m / {}m".format(node.cpuRequests[pod], node.cpuLimits[pod]), "{}Mi / {}Mi".format(int(node.memRequests[pod] / 1048576), int(node.memLimits[pod] / 1048576))])
+        table.add_row(['','',''])
+        table.add_row([Fore.CYAN + "Cluster total" + Style.RESET_ALL, self.__printProgressBar(NodeData.totalCpuRequests, NodeData.totalCpuCapacity, "Req"), self.__printProgressBar(NodeData.totalMemRequests, NodeData.totalMemCapacity, "Req")])
+        print(table)
 
 class NodeData:
     totalCpuRequests = 0
